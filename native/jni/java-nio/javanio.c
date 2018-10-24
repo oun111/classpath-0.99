@@ -52,20 +52,29 @@ exception statement from your version.  */
 
 
 // yzhou
-ssize_t my_jvm_nio_hook_read(int fd, char *buf, int len)
-{
-  struct my_jvm_hook_s {
-    int (*hook_accept) (void);
-    int (*hook_listen)(int);
-    int (*hook_read)(int,char*,size_t*);
-    int (*hook_write)(int,char*,size_t);
-  } ;
+struct my_jvm_hook_s {
+  int (*hook_accept) (void);
+  int (*hook_listen)(int);
+  int (*hook_read)(int,char*,size_t*);
+  int (*hook_write)(int,char*,size_t);
+  int (*bind_addr_in_jni)(void) ;
+} ;
 
+static
+void* my_jvm_get_module_extra(void)
+{
   extern int get_module_id(const char *mod_name) ;
   extern void* get_module_extra(int mod_id) ;
 
   int modid = get_module_id("my_jvm");
-  struct my_jvm_hook_s *pe = get_module_extra(modid);
+
+
+  return get_module_extra(modid);
+}
+
+ssize_t my_jvm_nio_hook_read(int fd, char *buf, int len)
+{
+  struct my_jvm_hook_s *pe = my_jvm_get_module_extra();
   ssize_t result = 0L;
 
 
@@ -75,16 +84,14 @@ ssize_t my_jvm_nio_hook_read(int fd, char *buf, int len)
 
     result= pe->hook_read(fd,buf,&ret);
     errno = EAGAIN ;
-    //printf("%s: result: %zu\n",__func__,result);
+    if (result>0)
+      printf("%s: fd %d rx: %s, size: %zu, errno: %d\n",__func__,
+          fd,buf,result,errno);
 
     // fd 's NOT hooked, turn to original read call
     if (result==-2) 
       result = read (fd, buf, len);
 
-    // yzhou
-    if (result>0)
-      printf("%s: fd %d rx: %s, size: %zu, errno: %d\n",__func__,
-          fd,buf,result,errno);
   }
   else {
     result= -1;
@@ -97,18 +104,7 @@ ssize_t my_jvm_nio_hook_read(int fd, char *buf, int len)
 
 ssize_t my_jvm_nio_hook_write(int fd, char *buf, size_t len)
 {
-  struct my_jvm_hook_s {
-    int (*hook_accept) (void);
-    int (*hook_listen)(int);
-    int (*hook_read)(int,char*,size_t*);
-    int (*hook_write)(int,char*,size_t);
-  } ;
-
-  extern int get_module_id(const char *mod_name) ;
-  extern void* get_module_extra(int mod_id) ;
-
-  int modid = get_module_id("my_jvm");
-  struct my_jvm_hook_s *pe = get_module_extra(modid);
+  struct my_jvm_hook_s *pe = my_jvm_get_module_extra();
   ssize_t result = 0L ;
 
 
@@ -118,15 +114,12 @@ ssize_t my_jvm_nio_hook_write(int fd, char *buf, size_t len)
 
     result= pe->hook_write(fd,buf, ret);
     errno = EAGAIN ;
-    //printf("%s: result: %zu\n",__func__,result);
+    if (result>0)
+      printf("%s: tx: %s, size: %zu\n",__func__,buf,result);
 
     // fd 's NOT hooked, turn to original read call
     if (result==-2) 
       result = write (fd, buf, len);
-
-    // yzhou
-    if (result>0)
-      printf("%s: tx: %s, size: %zu\n",__func__,buf,result);
   }
   else {
     result= -1;
@@ -138,18 +131,8 @@ ssize_t my_jvm_nio_hook_write(int fd, char *buf, size_t len)
 
 int my_jvm_nio_hook_accept(void)
 {
-  struct my_jvm_hook_s {
-    int (*hook_accept) (void);
-    int (*hook_listen)(int);
-    int (*hook_read)(int,char*,size_t*);
-    int (*hook_write)(int,char*,size_t);
-  } ;
-
-  extern int get_module_id(const char *mod_name) ;
-  extern void* get_module_extra(int mod_id) ;
-
-  int modid = get_module_id("my_jvm"), ret = -1;
-  struct my_jvm_hook_s *pe = get_module_extra(modid);
+  struct my_jvm_hook_s *pe = my_jvm_get_module_extra();
+  int ret ;
 
 
   if (pe) {

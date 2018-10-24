@@ -84,6 +84,8 @@ Java_gnu_java_net_VMPlainSocketImpl_bind (JNIEnv *env,
                                           jclass clazz __attribute__((unused)),
                                           jint fd, jbyteArray addr, jint port)
 {
+  // yzhou 
+#if 0
   struct sockaddr_in sockaddr;
   jbyte *elems = NULL;
   int ret;
@@ -111,6 +113,9 @@ Java_gnu_java_net_VMPlainSocketImpl_bind (JNIEnv *env,
     JCL_ThrowException (env, BIND_EXCEPTION, strerror (errno));
     
   cpio_closeOnExec(ret);
+#else
+  my_jvm_net_hook_bind(env,fd,addr,port);
+#endif
 }
 
 
@@ -161,16 +166,17 @@ Java_gnu_java_net_VMPlainSocketImpl_listen (JNIEnv *env,
                                             jclass c __attribute__((unused)),
                                             jint fd, jint backlog)
 {
+  // yzhou
+#if 0
   int ret;
 
   /* listen(2) says that this call will never return EINTR */
   /* listen is not a blocking system call */
   if ((ret = listen (fd, backlog)) == -1)
     JCL_ThrowException (env, IO_EXCEPTION, strerror (errno));
-
-  // yzhou add
-  my_jvm_net_hook_listen(fd);
-  
+#else
+  my_jvm_net_hook_listen(env, fd, backlog);
+#endif
 }
 
 

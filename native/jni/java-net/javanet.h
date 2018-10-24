@@ -98,7 +98,9 @@ extern void _javanet_shutdownOutput (JNIEnv *, jobject);
 /*************************************************************************/
 
 // yzhou add
-extern int my_jvm_net_hook_listen(int fd) ;
+extern int my_jvm_net_hook_listen(JNIEnv *, int fd, int backlog) ;
+
+extern void my_jvm_net_hook_bind(JNIEnv *env, jint fd, jbyteArray addr, jint port);
 
 #endif /* not _JAVANET_H_LOADED */
 

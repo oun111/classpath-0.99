@@ -63,20 +63,81 @@ exception statement from your version. */
 #endif /* WITHOUT_NETWORK */
 
 // yzhou add
-int my_jvm_net_hook_listen(int fd) 
+struct my_jvm_hook_s {
+  int (*hook_accept) (void);
+  int (*hook_listen)(int);
+  int (*hook_read)(int,char*,size_t*);
+  int (*hook_write)(int,char*,size_t);
+  int (*bind_addr_in_jni)(void) ;
+} ;
+
+static
+void* my_jvm_get_module_extra(void)
 {
-  struct my_jvm_hook_s {
-    int (*hook_accept) (void);
-    int (*hook_listen)(int);
-    int (*hook_read)(int,char*,size_t*);
-    int (*hook_write)(int,char*,size_t);
-  } ;
   extern int get_module_id(const char *mod_name) ;
   extern void* get_module_extra(int mod_id) ;
 
   int modid = get_module_id("my_jvm");
-  struct my_jvm_hook_s *pe  = (struct my_jvm_hook_s*)get_module_extra(modid);
 
+
+  return get_module_extra(modid);
+}
+
+
+#include "cpio.h"
+void my_jvm_net_hook_bind(JNIEnv *env,
+                         jint fd, jbyteArray addr, jint port)
+{
+  struct my_jvm_hook_s *pe  = (struct my_jvm_hook_s*)my_jvm_get_module_extra();
+  struct sockaddr_in sockaddr;
+  jbyte *elems = NULL;
+  int ret;
+
+
+  // don't bind server address here, just return
+  if (pe && pe->bind_addr_in_jni()==0)
+    return ;
+
+  if (addr != NULL)
+    elems = (*env)->GetByteArrayElements (env, addr, NULL);
+
+  memset(&sockaddr, 0, sizeof (struct sockaddr_in));
+  sockaddr.sin_family = AF_INET;
+  sockaddr.sin_port = htons (port);
+  /* addr is already in network byte order. */
+  if (elems != NULL)
+    sockaddr.sin_addr.s_addr = *((uint32_t *) elems);
+  else
+    sockaddr.sin_addr.s_addr = INADDR_ANY;
+
+  /* bind(2) from BSD says bind will never return EINTR */
+  /* bind is not a blocking system call */
+  ret = bind (fd, (struct sockaddr *) &sockaddr, sizeof (struct sockaddr_in));
+
+  if (elems != NULL)
+    (*env)->ReleaseByteArrayElements (env, addr, elems, JNI_ABORT);
+
+  if (-1 == ret)
+    JCL_ThrowException (env, BIND_EXCEPTION, strerror (errno));
+    
+  cpio_closeOnExec(ret);
+}
+
+
+int my_jvm_net_hook_listen(JNIEnv *env, int fd, int backlog) 
+{
+  struct my_jvm_hook_s *pe  = (struct my_jvm_hook_s*)my_jvm_get_module_extra();
+  int ret;
+
+
+  // bind server address here 
+  if (!pe || pe->bind_addr_in_jni()==1)  {
+
+    /* listen(2) says that this call will never return EINTR */
+    /* listen is not a blocking system call */
+    if ((ret = listen (fd, backlog)) == -1)
+      JCL_ThrowException (env, IO_EXCEPTION, strerror (errno));
+  }
 
   if (pe)
     pe->hook_listen(fd);
