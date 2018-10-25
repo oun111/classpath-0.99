@@ -58,6 +58,7 @@ struct my_jvm_hook_s {
   int (*hook_read)(int,char*,size_t*);
   int (*hook_write)(int,char*,size_t);
   int (*bind_addr_in_jni)(void) ;
+  int (*hook_close)(int fd);
 } ;
 
 static
@@ -70,6 +71,17 @@ void* my_jvm_get_module_extra(void)
 
 
   return get_module_extra(modid);
+}
+
+int my_jvm_nio_hook_close(int fd)
+{
+  struct my_jvm_hook_s *pe = my_jvm_get_module_extra();
+
+
+  if (pe)
+    return pe->hook_close(fd);
+
+  return 0;
 }
 
 ssize_t my_jvm_nio_hook_read(int fd, char *buf, int len)

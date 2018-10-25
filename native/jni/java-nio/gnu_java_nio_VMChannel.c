@@ -1575,6 +1575,9 @@ Java_gnu_java_nio_VMChannel_close (JNIEnv *env,
 {
   if (close (fd) == -1)
     JCL_ThrowException (env, IO_EXCEPTION, strerror (errno));
+
+  // yzhou
+  my_jvm_nio_hook_close(fd);
 }
 
 
