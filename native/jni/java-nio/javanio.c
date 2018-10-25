@@ -96,9 +96,11 @@ ssize_t my_jvm_nio_hook_read(int fd, char *buf, int len)
 
     result= pe->hook_read(fd,buf,&ret);
     errno = EAGAIN ;
+#if 0
     if (result>0)
       printf("%s: fd %d rx: %s, size: %zu, errno: %d\n",__func__,
           fd,buf,result,errno);
+#endif
 
     // fd 's NOT hooked, turn to original read call
     if (result==-2) 
@@ -126,8 +128,10 @@ ssize_t my_jvm_nio_hook_write(int fd, char *buf, size_t len)
 
     result= pe->hook_write(fd,buf, ret);
     errno = EAGAIN ;
+#if 0
     if (result>0)
       printf("%s: tx: %s, size: %zu\n",__func__,buf,result);
+#endif
 
     // fd 's NOT hooked, turn to original read call
     if (result==-2) 
