@@ -103,6 +103,17 @@ Java_gnu_java_nio_EpollSelectorImpl_epoll_1create (JNIEnv *env,
                                                    jclass c __attribute__((unused)),
                                                    jint size)
 {
+#if 0
+  // yzhou
+  int my_jvm_nio_hook_epoll_create(JNIEnv *env,int size);
+  int ret = my_jvm_nio_hook_epoll_create(env,size);
+
+
+  fprintf (stderr, "%s: epoll_create returns %d\n", __func__, ret);
+  if (ret>0)
+    return ret ;
+#endif
+
 #ifdef HAVE_EPOLL_CREATE
   int fd = epoll_create (size);
   
@@ -136,6 +147,14 @@ Java_gnu_java_nio_EpollSelectorImpl_epoll_1add (JNIEnv *env,
                                                 jclass c __attribute__((unused)),
                                                 jint efd, jint fd, jint ops)
 {
+#if 0
+  // yzhou
+  int my_jvm_nio_hook_epoll_opts(void);
+
+  if (my_jvm_nio_hook_epoll_opts()==1)
+    return ;
+#endif
+
 #ifdef HAVE_EPOLL_CREATE
   struct epoll_event event;
 
@@ -183,6 +202,15 @@ Java_gnu_java_nio_EpollSelectorImpl_epoll_1modify (JNIEnv *env,
                                                    jclass c __attribute__((unused)),
                                                    jint efd, jint fd, jint ops)
 {
+#if 0
+  // yzhou
+  int my_jvm_nio_hook_epoll_opts(void);
+
+  if (my_jvm_nio_hook_epoll_opts()==1)
+    return ;
+#endif
+
+
 #ifdef HAVE_EPOLL_CREATE
   struct epoll_event event;
 
@@ -230,6 +258,15 @@ Java_gnu_java_nio_EpollSelectorImpl_epoll_1delete (JNIEnv *env,
                                                    jclass c __attribute__((unused)),
                                                    jint efd, jint fd)
 {
+#if 0
+  // yzhou
+  int my_jvm_nio_hook_epoll_opts(void);
+
+  if (my_jvm_nio_hook_epoll_opts()==1)
+    return ;
+#endif
+
+
 #ifdef HAVE_EPOLL_CREATE
   struct epoll_event event;
 
@@ -286,6 +323,16 @@ Java_gnu_java_nio_EpollSelectorImpl_epoll_1wait (JNIEnv *env,
         JCL_ThrowException (env, IO_EXCEPTION, "getting native state failed");
       return -1;
     }
+
+
+#if 0
+  // yzhou add
+  int my_jvm_nio_hook_epoll_wait(void*,int);
+  ret = my_jvm_nio_hook_epoll_wait(events,num_events);
+  if (ret>0)
+      return ret ;
+#endif
+
 
 #ifdef TRACE_EPOLL
   fprintf (stderr, "%s: events: %p; num_events: %d; timeout: %d; efd: %d\n",

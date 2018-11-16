@@ -68,7 +68,7 @@ struct my_jvm_hook_s {
   int (*hook_listen)(int);
   int (*hook_read)(int,char*,size_t*);
   int (*hook_write)(int,char*,size_t);
-  int (*bind_addr_in_jni)(void) ;
+  int (*hook_jni)(void) ;
 } ;
 
 static
@@ -95,7 +95,7 @@ void my_jvm_net_hook_bind(JNIEnv *env,
 
 
   // don't bind server address here, just return
-  if (pe && pe->bind_addr_in_jni()==0)
+  if (pe && pe->hook_jni()==1)
     return ;
 
   if (addr != NULL)
@@ -131,7 +131,7 @@ int my_jvm_net_hook_listen(JNIEnv *env, int fd, int backlog)
 
 
   // bind server address here 
-  if (!pe || pe->bind_addr_in_jni()==1)  {
+  if (!pe || pe->hook_jni()==0)  {
 
     /* listen(2) says that this call will never return EINTR */
     /* listen is not a blocking system call */

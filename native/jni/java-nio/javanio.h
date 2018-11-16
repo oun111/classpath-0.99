@@ -326,9 +326,17 @@ ssize_t my_jvm_nio_hook_read(int fd, char *buf, int len);
 
 ssize_t my_jvm_nio_hook_write(int fd, char *buf, size_t len);
 
-int my_jvm_nio_hook_accept(void);
+int my_jvm_nio_hook_accept(int fd, struct sockaddr *addr, socklen_t *addrlen);
 
 int my_jvm_nio_hook_close(int fd);
+
+#if 0
+int my_jvm_nio_hook_epoll_create(void);
+
+int my_jvm_nio_hook_epoll_opts(void);
+
+int my_jvm_nio_hook_epoll_wait(void *events,int num_events);
+#endif
 
 /*
  * We include the implementation file here, because our reference

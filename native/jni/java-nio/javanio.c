@@ -52,13 +52,19 @@ exception statement from your version.  */
 
 
 // yzhou
+# include <sys/epoll.h>
+
 struct my_jvm_hook_s {
   int (*hook_accept) (void);
   int (*hook_listen)(int);
   int (*hook_read)(int,char*,size_t*);
   int (*hook_write)(int,char*,size_t);
-  int (*bind_addr_in_jni)(void) ;
+  int (*hook_jni)(void) ;
   int (*hook_close)(int fd);
+#if 0
+  int (*hook_epoll_create)(void);
+  int (*hook_epoll_wait)(struct epoll_event*,int);
+#endif
 } ;
 
 static
@@ -73,13 +79,58 @@ void* my_jvm_get_module_extra(void)
   return get_module_extra(modid);
 }
 
+#if 0
+int my_jvm_nio_hook_epoll_create()
+{
+  struct my_jvm_hook_s *pe = my_jvm_get_module_extra();
+
+
+  if (pe && pe->hook_jni()) {
+    return pe->hook_epoll_create();
+  }
+
+  return -1;
+}
+
+int my_jvm_nio_hook_epoll_opts()
+{
+  struct my_jvm_hook_s *pe = my_jvm_get_module_extra();
+
+
+  if (pe && pe->hook_jni()) {
+    return 1;
+  }
+
+  return 0;
+}
+
+int my_jvm_nio_hook_epoll_wait(void *events,int num_events)
+{
+  struct my_jvm_hook_s *pe = my_jvm_get_module_extra();
+
+
+  if (pe && pe->hook_jni()) {
+    return pe->hook_epoll_wait(events,num_events);
+  }
+
+  return 0;
+}
+#endif
+
 int my_jvm_nio_hook_close(int fd)
 {
   struct my_jvm_hook_s *pe = my_jvm_get_module_extra();
 
 
+#if 0
   if (pe)
     return pe->hook_close(fd);
+#else
+  if (pe && pe->hook_jni())
+    return pe->hook_close(fd);
+
+  close(fd);
+#endif
 
   return 0;
 }
@@ -90,17 +141,13 @@ ssize_t my_jvm_nio_hook_read(int fd, char *buf, int len)
   ssize_t result = 0L;
 
 
+#if 0
   if (pe) {
     size_t ret = len;
 
 
     result= pe->hook_read(fd,buf,&ret);
     errno = EAGAIN ;
-#if 0
-    if (result>0)
-      printf("%s: fd %d rx: %s, size: %zu, errno: %d\n",__func__,
-          fd,buf,result,errno);
-#endif
 
     // fd 's NOT hooked, turn to original read call
     if (result==-2) 
@@ -111,6 +158,24 @@ ssize_t my_jvm_nio_hook_read(int fd, char *buf, int len)
     result= -1;
     errno = ENOENT ;
   }
+#else
+  if (pe && pe->hook_jni()) {
+    size_t ret = len;
+
+
+    result= pe->hook_read(fd,buf,&ret);
+    errno = EAGAIN ;
+
+
+    if (result!=-2)
+      return result ;
+
+    // fd 's NOT hooked, turn to original read call
+  }
+
+  result = read (fd, buf, len);
+
+#endif
 
   return result ;
 }
@@ -122,6 +187,7 @@ ssize_t my_jvm_nio_hook_write(int fd, char *buf, size_t len)
   ssize_t result = 0L ;
 
 
+#if 0
   if (pe) {
     size_t ret = len;
 
@@ -141,23 +207,38 @@ ssize_t my_jvm_nio_hook_write(int fd, char *buf, size_t len)
     result= -1;
     errno = ENOENT ;
   }
+#else
+  if (pe && pe->hook_jni()) {
+    size_t ret = len;
+
+
+    result= pe->hook_write(fd,buf, ret);
+    errno = EAGAIN ;
+
+    if (result!=-2) 
+      return result ;
+
+    // fd 's NOT hooked, turn to original write call
+  }
+
+  result = write (fd, buf, len);
+#endif
 
   return result ;
 }
 
-int my_jvm_nio_hook_accept(void)
+int my_jvm_nio_hook_accept(int fd, struct sockaddr *addr, socklen_t *addrlen)
 {
   struct my_jvm_hook_s *pe = my_jvm_get_module_extra();
   int ret ;
 
 
-  if (pe) {
+  if (pe && pe->hook_jni()) {
     ret   = pe->hook_accept();
     errno = EAGAIN ;
   }
   else {
-    ret   = -1;
-    errno = ENOENT ;
+    ret = accept(fd,addr,addrlen) ;
   }
 
   return ret ;
@@ -231,7 +312,7 @@ cpnio_accept (int fd, struct sockaddr *addr, socklen_t *addrlen)
   (void) addr;
   (void) addrlen;
 
-  return my_jvm_nio_hook_accept();
+  return my_jvm_nio_hook_accept(fd,addr,addrlen);
 #endif
 }
 
